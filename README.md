@@ -1,47 +1,75 @@
-# Snaplink
+<div align="center">
+  <img src="public/banner.svg" alt="SnapLink Logo" width="100%" />
 
-A production-ready URL shortener with a beautiful premium UI, built with **Node.js**, **Express**, and **SQLite**.
+  <br />
+  <br />
 
-## Features
+  <p>
+    <b>A production-ready URL shortener with a beautiful premium UI, built with Node.js, Express, and SQLite.</b>
+  </p>
 
-- **Shorten URLs** — Generates unique 6-character short codes using nanoid
-- **Stunning Frontend** — Glassmorphism UI, real-time stats, and recent links saved in local storage
-- **Fast Redirects** — In-memory cache-aside pattern for sub-millisecond redirect lookups
-- **Click Analytics** — Tracks click count per short URL
-- **Zero Config Database** — Uses SQLite (`sql.js`) with an auto-creating database file
-- **Collision Handling** — Retries up to 3 times on hash collision
+  <p>
+    <img src="https://img.shields.io/badge/Node.js-v24+-green.svg?style=for-the-badge&logo=nodedotjs" alt="Node.js" />
+    <img src="https://img.shields.io/badge/Express-Framework-white.svg?style=for-the-badge&logo=express&logoColor=black" alt="Express.js" />
+    <img src="https://img.shields.io/badge/SQLite-Database-003B57.svg?style=for-the-badge&logo=sqlite" alt="SQLite" />
+    <img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="License" />
+  </p>
+</div>
 
-## Tech Stack
+---
+
+## ✨ Features
+
+- 🔗 **Shorten URLs** — Generates unique 6-character short codes using `nanoid`.
+- 🎨 **Stunning Frontend** — Glassmorphism UI, real-time stats, and recent links saved in local storage.
+- ⚡ **Fast Redirects** — In-memory cache-aside pattern for sub-millisecond redirect lookups.
+- 📊 **Click Analytics** — Tracks click count per short URL.
+- 📦 **Zero Config Database** — Uses SQLite (`sql.js`) with an auto-creating database file.
+- 🛡️ **Collision Handling** — Retries up to 3 times gracefully on hash collision.
+
+---
+
+## 🛠️ Tech Stack
 
 | Component | Technology | Purpose |
-|-----------|-----------|---------|
-| Frontend | HTML / CSS / JS | Premium UI with animated particles & responsive design |
-| Runtime | Node.js v24+ | JavaScript runtime |
-| Framework | Express.js | HTTP routing & static file serving |
-| Database | SQLite (`sql.js`) | Persistent URL storage (zero native compilation) |
-| Cache | In-Memory Map | High-speed redirect lookups with TTL |
-| ID Gen | nanoid v3 | URL-safe short code generation |
+| :--- | :--- | :--- |
+| **Frontend** | HTML / CSS / JS | Premium UI with animated particles & responsive design |
+| **Runtime** | Node.js v24+ | Fast JavaScript runtime environment |
+| **Framework** | Express.js | robust HTTP routing & static file serving |
+| **Database** | SQLite (`sql.js`) | Persistent URL storage (zero native compilation) |
+| **Cache** | In-Memory Map | High-speed redirect lookups with TTL expiration |
+| **ID Gen** | nanoid v3 | URL-safe and collision-resistant short code generation |
 
-## Architecture
+---
 
-```
-Client → Express → Cache Map (check)
-                      ↓ miss
-                   SQLite DB → Cache Map (write) → Response
+## 🧠 Architecture
+
+### Request Lifecycle
+
+```mermaid
+graph TD
+    A[Client] -->|GET /:code| B(Express Router)
+    B --> C{Cache Map Check}
+    C -->|Hit| D[Redirect 301]
+    C -->|Miss| E[(SQLite DB)]
+    E --> F{Found?}
+    F -->|Yes| G[Update Cache Map]
+    G --> D
+    F -->|No| H[404 Not Found]
 ```
 
 ### Caching Strategy (Cache-Aside)
+- **On `POST /shorten`**: Insert to DB only — don't cache (many URLs never get visited).
+- **On `GET /:code`**: Check Cache → miss → query DB → cache result → redirect.
+- **On `DELETE /api/:code`**: Remove from DB + invalidate Cache.
+- **TTL**: 24 hours (configurable via `CACHE_TTL`).
 
-- **On `POST /shorten`**: Insert to DB only — don't cache (many URLs never get visited)
-- **On `GET /:code`**: Check Cache → miss → query DB → cache result → redirect
-- **On `DELETE /api/:code`**: Remove from DB + invalidate Cache
-- **TTL**: 24 hours (configurable via `CACHE_TTL`)
+---
 
-## Quick Start
+## 🚀 Quick Start
 
 ### Prerequisites
-
-- Node.js installed
+- [Node.js](https://nodejs.org/) installed on your machine.
 
 ### Setup
 
@@ -56,9 +84,11 @@ cp .env.example .env
 npm run dev
 ```
 
-Then open **http://localhost:3000** in your browser.
+Then open [**http://localhost:3000**](http://localhost:3000) in your browser.
 
-## API Reference
+---
+
+## 📖 API Reference
 
 ### `POST /api/shorten`
 Shorten a long URL.
@@ -101,27 +131,33 @@ Get click statistics for a short URL.
 Delete a short URL and invalidate its cache. Returns `204 No Content`.
 
 ### `GET /health`
-Health check endpoint.
+Health check endpoint to ensure service uptime.
 
-## Design Decisions
+---
+
+## 📐 Design Decisions
 
 | Decision | Rationale |
-|----------|-----------|
-| In-memory Cache | Reads outnumber writes 100:1; answers in <1ms vs DB queries |
-| Cache-aside (not write-through) | Only cache on first GET — avoids caching URLs that are never visited |
-| Non-fatal Cache failures | Cache is a performance layer, not source of truth; app degrades gracefully |
-| HTTP 301 redirect | Browsers cache 301 locally — subsequent visits skip the server entirely |
-| nanoid(6) with retry | 56 billion possible codes; collision retry handles the astronomically rare case |
-| Fire-and-forget click increment | Don't block the redirect response to update click count |
+| :--- | :--- |
+| **In-memory Cache** | Reads outnumber writes 100:1; answers in <1ms vs DB queries. |
+| **Cache-aside** *(not write-through)* | Only cache on first GET — avoids caching URLs that are never visited. |
+| **Non-fatal Cache failures** | Cache is a performance layer, not source of truth; app degrades gracefully. |
+| **HTTP 301 redirect** | Browsers cache 301 locally — subsequent visits skip the server entirely. |
+| **nanoid(6) with retry** | 56 billion possible codes; collision retry handles the astronomically rare case. |
+| **Fire-and-forget click increment**| Don't block the redirect response to update the click count. |
 
-## Deployment Note (Render)
+---
 
-If deploying to Render.com's free tier, note that they use **ephemeral file systems**. This means the `data/urlshortener.db` SQLite file will be wiped every time the server goes to sleep or redeploys. 
+## ☁️ Deployment Note (Render)
+
+If deploying to [Render.com](https://render.com)'s free tier, note that they use **ephemeral file systems**. This means the `data/urlshortener.db` SQLite file will be wiped every time the server goes to sleep or redeploys. 
 
 For a production deployment, either:
-1. Attach a Render Persistent Disk (paid).
+1. Attach a **Render Persistent Disk** (paid).
 2. Swap the database driver from `sql.js` back to `pg` (PostgreSQL) and use a free hosted database like Supabase or Neon. The architecture patterns remain identical.
 
-## License
+---
 
-MIT
+<div align="center">
+  <p><strong>Created by Atharva Futane</strong></p>
+</div>
